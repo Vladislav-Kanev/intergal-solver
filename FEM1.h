@@ -146,7 +146,16 @@ double FEM<dim>::basis_function(unsigned int node, double xi){
   /*You can use the function "xi_at_node" (defined above) to get the value of xi (in the bi-unit domain)
     at any node in the element - using deal.II's element node numbering pattern.*/
 
-  //EDIT
+  //EDIT DONE
+
+  const unsigned int totalNodes = dof_handler.n_dofs(); //Total number of nodes
+
+  for (unsigned int i = 0; i < totalNodes; ++i) {
+    value *= (xi - xi_at_node(i))
+    if (i != node) {
+      value /= (xi_at_node(node) - xi_at_node(i)) 
+    }
+  }
 
   return value;
 }
@@ -175,7 +184,7 @@ template <int dim>
 void FEM<dim>::generate_mesh(unsigned int numberOfElements){
 
   //Define the limits of your domain
-  L = ; //EDIT
+  L = 0.1; //EDIT DONE
   double x_min = 0.;
   double x_max = L;
 
@@ -219,7 +228,7 @@ template <int dim>
 void FEM<dim>::setup_system(){
 
   //Define constants for problem (Dirichlet boundary values)
-  g1 = ; g2 = ; //EDIT
+  g1 = 0; g2 = 0.001; //EDIT DONE
 
   //Let deal.II organize degrees of freedom
   dof_handler.distribute_dofs (fe);
@@ -249,6 +258,7 @@ void FEM<dim>::setup_system(){
   /*A quad rule of 2 is included here as an example. You will need to decide
     what quadrature rule is needed for the given problems*/
   quadRule = 2; //EDIT - Number of quadrature points along one dimension
+  //quadRule needs to find by empirical method 
   quad_points.resize(quadRule); quad_weight.resize(quadRule);
 
   quad_points[0] = -sqrt(1./3.); //EDIT
