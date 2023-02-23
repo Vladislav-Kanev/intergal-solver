@@ -73,7 +73,7 @@ class FEM
   Vector<double>        D, F; 		 //Global vectors - Solution vector (D) and Global force vector (F)
   std::vector<double>   nodeLocation;	 //Vector of the x-coordinate of nodes by global dof number
   std::map<unsigned int,double> boundary_values;	//Map of dirichlet boundary conditions
-  double                basisFunctionOrder, prob, L, g1, g2;    
+  double                basisFunctionOrder, prob, L, g1, g2, E, u0;    
 
   //solution name array
   std::vector<std::string> nodal_solution_names;
@@ -229,6 +229,8 @@ void FEM<dim>::setup_system(){
 
   //Define constants for problem (Dirichlet boundary values)
   g1 = 0; g2 = 0.001; //EDIT DONE
+  u0 = g1;
+  E = 1e11;
 
   //Let deal.II organize degrees of freedom
   dof_handler.distribute_dofs (fe);
@@ -257,15 +259,16 @@ void FEM<dim>::setup_system(){
   //Define quadrature rule
   /*A quad rule of 2 is included here as an example. You will need to decide
     what quadrature rule is needed for the given problems*/
-  quadRule = 2; //EDIT - Number of quadrature points along one dimension
+  quadRule = 2; //EDIT CONFIGURE - Number of quadrature points along one dimension
   //quadRule needs to find by empirical method 
   quad_points.resize(quadRule); quad_weight.resize(quadRule);
 
-  quad_points[0] = -sqrt(1./3.); //EDIT
-  quad_points[1] = sqrt(1./3.); //EDIT
+  //Next values needs to find in a book 
+  quad_points[0] = -sqrt(1./3.); //EDIT CONFIGURE
+  quad_points[1] = sqrt(1./3.); //EDIT CONFIGURE
 
-  quad_weight[0] = 1.; //EDIT
-  quad_weight[1] = 1.; //EDIT
+  quad_weight[0] = 1.; //EDIT CONFIGURE
+  quad_weight[1] = 1.; //EDIT CONFIGURE
 
   //Just some notes...
   std::cout << "   Number of active elems:       " << triangulation.n_active_cells() << std::endl;
@@ -284,6 +287,7 @@ void FEM<dim>::assemble_system(){
   std::vector<unsigned int> local_dof_indices (dofs_per_elem);
   double										h_e, x, f;
 
+
   //loop over elements  
   typename DoFHandler<dim>::active_cell_iterator elem = dof_handler.begin_active(), 
     endc = dof_handler.end();
@@ -301,21 +305,27 @@ void FEM<dim>::assemble_system(){
     h_e = nodeLocation[local_dof_indices[1]] - nodeLocation[local_dof_indices[0]];
 
     //Loop over local DOFs and quadrature points to populate Flocal and Klocal.
-    Flocal = 0.;
-    for(unsigned int A=0; A<dofs_per_elem; A++){
+    // Flocal = 0.;
+    for(unsigned int A=0; A<dofs_per_elem; A++){ // WHY IS THIS A? AAAAAAAAAA?
       for(unsigned int q=0; q<quadRule; q++){
-	x = 0;
-	//Interpolate the x-coordinates at the nodes to find the x-coordinate at the quad pt.
-	for(unsigned int B=0; B<dofs_per_elem; B++){
-	  x += nodeLocation[local_dof_indices[B]]*basis_function(B,quad_points[q]);
-	}
-	//EDIT - Define Flocal.
+	      x = 0;
+
+	      //Interpolate the x-coordinates at the nodes to find the x-coordinate at the quad pt.
+        for(unsigned int B=0; B<dofs_per_elem; B++){
+          x += nodeLocation[local_dof_indices[B]]*basis_function(B,quad_points[q]);
+        }
+
+        Flocal[A] += basis_function(A, quad_points(j)) * x * quad_weight[q];
       }
+      Flocal[A] *= 1e11 * h_e / 2;
+      //EDIT PROBABLY DONE- Define Flocal.
     }
-    //Add nonzero Neumann condition, if applicable
+
+    //Add nonzero Neumann condi tion, if applicable
     if(prob == 2){ 
       if(nodeLocation[local_dof_indices[1]] == L){
-	//EDIT - Modify Flocal to include the traction on the right boundary.
+	      //EDIT PROBABLY DONE - Modify Flocal to include the traction on the right boundary.
+        Flocal[dofs_per_elem - 1] += 1e10;
       }
     }
 
@@ -323,9 +333,10 @@ void FEM<dim>::assemble_system(){
     Klocal = 0;
     for(unsigned int A=0; A<dofs_per_elem; A++){
       for(unsigned int B=0; B<dofs_per_elem; B++){
-	for(unsigned int q=0; q<quadRule; q++){
-	  //EDIT - Define Klocal.
-	}
+        for(unsigned int q=0; q<quadRule; q++){
+          //EDIT PROBABLY DONE - Define Klocal.
+          Klocal.add(A, B, quad_weight[q]);
+        }
       }
     }
 
