@@ -151,9 +151,8 @@ double FEM<dim>::basis_function(unsigned int node, double xi){
   const unsigned int totalNodes = dof_handler.n_dofs(); //Total number of nodes
 
   for (unsigned int i = 0; i < totalNodes; ++i) {
-    value *= (xi - xi_at_node(i))
     if (i != node) {
-      value /= (xi_at_node(node) - xi_at_node(i)) 
+      value *= (xi - xi_at_node(i)) / (xi_at_node(node) - xi_at_node(i));
     }
   }
 
@@ -174,7 +173,15 @@ double FEM<dim>::basis_gradient(unsigned int node, double xi){
   /*You can use the function "xi_at_node" (defined above) to get the value of xi (in the bi-unit domain)
     at any node in the element - using deal.II's element node numbering pattern.*/
 
-  //EDIT
+  //EDIT PROBABLY DONE
+
+  for (unsigned int i = 0; i < totalNodes; ++i) {
+    if (i != node) {
+      value += 1 / (xi_at_node(node) - xi_at_node(i));
+    }
+  }
+
+  value *= basis_function(node, xi);
 
   return value;
 }
@@ -335,7 +342,7 @@ void FEM<dim>::assemble_system(){
       for(unsigned int B=0; B<dofs_per_elem; B++){
         for(unsigned int q=0; q<quadRule; q++){
           //EDIT PROBABLY DONE - Define Klocal.
-          Klocal.add(A, B, quad_weight[q]);
+          Klocal.add(A, B, basis_gradient(A, quad_points[q]) * basis_gradient(B, quad_points[q]) * quad_weight[q]);
         }
       }
     }
@@ -343,14 +350,16 @@ void FEM<dim>::assemble_system(){
     //Assemble local K and F into global K and F
     //You will need to used local_dof_indices[A]
     for(unsigned int A=0; A<dofs_per_elem; A++){
-      //EDIT - add component A of Flocal to the correct location in F
+      //EDIT PROBABLY DONE - add component A of Flocal to the correct location in F
       /*Remember, local_dof_indices[A] is the global degree-of-freedom number
 	corresponding to element node number A*/
+      F[local_dof_indices[A]] = Flocal[A];
       for(unsigned int B=0; B<dofs_per_elem; B++){
-	//EDIT - add component A,B of Klocal to the correct location in K (using local_dof_indices)
+	//EDIT PROBABLY DONE - add component A,B of Klocal to the correct location in K (using local_dof_indices)
 	/*Note: K is a sparse matrix, so you need to use the function "add".
 	  For example, to add the variable C to K[i][j], you would use:
 	  K.add(i,j,C);*/
+        K.add(local_dof_indices[A], local_dof_indices[B], Klocal[A][B]);
       }
     }
 
@@ -415,12 +424,12 @@ double FEM<dim>::l2norm_of_error(){
       x = 0.; u_h = 0.;
       //Find the values of x and u_h (the finite element solution) at the quadrature points
       for(unsigned int B=0; B<dofs_per_elem; B++){
-	x += nodeLocation[local_dof_indices[B]]*basis_function(B,quad_points[q]);
-	u_h += D[local_dof_indices[B]]*basis_function(B,quad_points[q]);
+        x += nodeLocation[local_dof_indices[B]]*basis_function(B,quad_points[q]);
+        u_h += D[local_dof_indices[B]]*basis_function(B,quad_points[q]);
       }
       //EDIT - Find the l2-norm of the error through numerical integration.
       /*This includes evaluating the exact solution at the quadrature points*/
-							
+			l2norm += integral(pow(u_h - u_exact, 2) * h_e / 2);
     }
   }
 
