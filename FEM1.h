@@ -76,7 +76,7 @@ public:
       nodeLocation; // Vector of the x-coordinate of nodes by global dof number
   std::map<unsigned int, double>
       boundary_values; // Map of dirichlet boundary conditions
-  double basisFunctionOrder, prob, L, g1, g2, E, u0;
+  double basisFunctionOrder, prob, L, g1, g2, E;
 
   // solution name array
   std::vector<std::string> nodal_solution_names;
@@ -144,9 +144,9 @@ double FEM<dim>::basis_function(unsigned int node, double xi) {
 
   // EDIT DONE
 
-  const unsigned int totalNodes = dof_handler.n_dofs(); // Total number of nodes
+  //const unsigned int totalNodes = dof_handler.n_dofs(); // Total number of nodes
 
-  for (unsigned int i = 0; i < totalNodes; ++i) {
+  for (unsigned int i = 0; i <= basisFunctionOrder; ++i) {
     if (i != node) {
       value *= (xi - xi_at_node(i)) / (xi_at_node(node) - xi_at_node(i));
     }
@@ -172,17 +172,69 @@ double FEM<dim>::basis_gradient(unsigned int node, double xi) {
     (in the bi-unit domain) at any node in the element - using deal.II's element
     node numbering pattern.*/
 
-  // EDIT PROBABLY DONE
+  // // EDIT PROBABLY DONE
 
-  const unsigned int totalNodes = dof_handler.n_dofs(); // Total number of nodes
+  // //const unsigned int totalNodes = dof_handler.n_dofs(); // Total number of nodes
 
-  for (unsigned int i = 0; i < totalNodes; ++i) {
-    if (i != node) {
-      value += 1 / (xi_at_node(node) - xi_at_node(i));
+  // for (unsigned int i = 0; i <= basisFunctionOrder; ++i) {
+  //   if (i != node) {
+  //     value += 1 / (xi_at_node(node) - xi_at_node(i));
+  //   }
+  // }
+
+  // value *= basis_function(node, xi);
+
+  double xi0 = xi_at_node(node);
+  double xi1 = 0.0, xi2 = 0.0, xi3 = 0.0;
+
+  switch((int)basisFunctionOrder) {
+    case 1:
+      value = (node == 0) ? -0.5 : 0.5;
+      break;
+    case 2:
+      switch(node) {
+        case 0:
+          xi1 = xi_at_node(1);
+          xi2 = xi_at_node(2);
+          break;
+        case 1:
+          xi1 = xi_at_node(0);
+          xi2 = xi_at_node(2);
+          break;
+        case 2:
+          xi1 = xi_at_node(0);
+          xi2 = xi_at_node(1);
+          break;
+      }
+      value = ((xi - xi2) + (xi - xi1))/((xi0 - xi1) * (xi0 - xi2));
+      break;
+    case 3:
+      switch(node) {
+        case 0:
+          xi1 = xi_at_node(1);
+          xi2 = xi_at_node(2);
+          xi3 = xi_at_node(3);
+          break;
+        case 1:
+          xi1 = xi_at_node(0);
+          xi2 = xi_at_node(2);
+          xi3 = xi_at_node(3);
+          break;
+        case 2:
+          xi1 = xi_at_node(0);
+          xi2 = xi_at_node(1);
+          xi3 = xi_at_node(3);
+          break;
+        case 3:
+          xi1 = xi_at_node(0);
+          xi2 = xi_at_node(1);
+          xi3 = xi_at_node(2);
+          break;
+      }
+      value = ((xi-xi2)*(xi-xi3) + (xi-xi1)*(xi-xi3) + (xi-xi1)*(xi-xi2)) / ((xi0-xi1) * (xi0-xi2) * (xi0-xi3));
+      break;
     }
-  }
 
-  value *= basis_function(node, xi);
 
   return value;
 }
@@ -235,7 +287,6 @@ template <int dim> void FEM<dim>::setup_system() {
   // Define constants for problem (Dirichlet boundary values)
   g1 = 0;
   g2 = 0.001; // EDIT DONE
-  u0 = g1;
   E = 1e11;
 
   // Let deal.II organize degrees of freedom
@@ -268,17 +319,29 @@ template <int dim> void FEM<dim>::setup_system() {
     what quadrature rule is needed for the given problems*/
   
   // EDIT CONFIGURE - Number of quadrature points along one dimension
-  quadRule = 2;
   // quadRule needs to find by empirical method
+
+  quadRule=5;
   quad_points.resize(quadRule);
   quad_weight.resize(quadRule);
+  
+  // quad_points[0] = -sqrt(1./3.); //EDIT
+  // quad_points[1] = sqrt(1./3.); //EDIT
 
-  // Next values needs to find in a book
-  quad_points[0] = -sqrt(1. / 3.); // EDIT CONFIGURE
-  quad_points[1] = sqrt(1. / 3.);  // EDIT CONFIGURE
+  // quad_weight[0] = 1.; //EDIT
+  // quad_weight[1] = 1.; //EDIT
 
-  quad_weight[0] = 1.; // EDIT CONFIGURE
-  quad_weight[1] = 1.; // EDIT CONFIGURE
+  quad_weight[0]= 128./225.;
+  quad_weight[1]= (322.+13.*sqrt(70.))/900.;
+  quad_weight[2]= (322.+13.*sqrt(70.))/900.;
+  quad_weight[3]= (322.-13.*sqrt(70.))/900.;
+  quad_weight[4]= (322.-13.*sqrt(70.))/900.;
+
+  quad_points[0]=0.;
+  quad_points[1]= +1./3. * sqrt(5.-2*sqrt(10./7.));
+  quad_points[2]= -1./3. * sqrt(5.-2*sqrt(10./7.));
+  quad_points[3]= +1./3. * sqrt(5.+2*sqrt(10./7.));
+  quad_points[4]= -1./3. * sqrt(5.+2*sqrt(10./7.));
 
   // Just some notes...
   std::cout << "   Number of active elems:       "
@@ -321,9 +384,8 @@ template <int dim> void FEM<dim>::assemble_system() {
         nodeLocation[local_dof_indices[1]] - nodeLocation[local_dof_indices[0]];
 
     // Loop over local DOFs and quadrature points to populate Flocal and Klocal.
-    //  Flocal = 0.;
-    for (unsigned int A = 0; A < dofs_per_elem;
-         A++) { // WHY IS THIS A? AAAAAAAAAA?
+    Flocal = 0.;
+    for (unsigned int A = 0; A < dofs_per_elem; A++) {
       for (unsigned int q = 0; q < quadRule; q++) {
         x = 0;
 
@@ -336,7 +398,8 @@ template <int dim> void FEM<dim>::assemble_system() {
 
         Flocal[A] += basis_function(A, quad_points[q]) * x * quad_weight[q];
       }
-      Flocal[A] *= 1e11 * h_e / 2;
+      // Flocal[A] *= 1e11 * h_e / 2;
+      Flocal[A] *= h_e / 2.;
       // EDIT PROBABLY DONE- Define Flocal.
     }
 
@@ -345,7 +408,7 @@ template <int dim> void FEM<dim>::assemble_system() {
       if (nodeLocation[local_dof_indices[1]] == L) {
         // EDIT PROBABLY DONE - Modify Flocal to include the traction on the
         // right boundary.
-        Flocal[dofs_per_elem - 1] += 1e10;
+        Flocal[1] += 1e11;
       }
     }
 
@@ -357,7 +420,7 @@ template <int dim> void FEM<dim>::assemble_system() {
           // EDIT PROBABLY DONE - Define Klocal.
           Klocal[A][B] += basis_gradient(A, quad_points[q]) * basis_gradient(B, quad_points[q]) * quad_weight[q];
         }
-        Klocal[A][B] *= (2 * 1e11) / h_e;
+        Klocal[A][B] *= 2. / h_e;
       }
     }
 
@@ -369,7 +432,7 @@ template <int dim> void FEM<dim>::assemble_system() {
       // in F
       /*Remember, local_dof_indices[A] is the global degree-of-freedom number
         corresponding to element node number A*/
-      F[local_dof_indices[A]] = Flocal[A];
+      F[local_dof_indices[A]] += Flocal[A];
       for (unsigned int B = 0; B < dofs_per_elem; B++) {
         // EDIT PROBABLY DONE - add component A,B of Klocal to the correct
         // location in K (using local_dof_indices)
@@ -449,7 +512,7 @@ template <int dim> double FEM<dim>::l2norm_of_error() {
       // EDIT - Find the l2-norm of the error through numerical integration.
       /*This includes evaluating the exact solution at the quadrature points*/
       
-      double du_0 = (prob != 1) ? 0 : ((g2 + 1e11 * std::pow(L, 3) / (6 * 1e11) - g1) / L);
+      double du_0 = (prob != 1) ? 0.0 : ((g2 + 1e11 * std::pow(L, 3) / (6 * 1e11) - g1) / L);
       
       u_exact = du_0 * x - 1e11 * std::pow(L, 3) / (6 * 1e11) + g1;
 
