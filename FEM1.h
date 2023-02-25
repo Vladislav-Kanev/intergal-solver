@@ -23,11 +23,11 @@
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/fe/fe_values.h>
 // Standard C++ libraries
-#include <fstream>
-#include <iostream>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
+#include <iostream>
 
 using namespace dealii;
 
@@ -144,8 +144,6 @@ double FEM<dim>::basis_function(unsigned int node, double xi) {
 
   // EDIT DONE
 
-  //const unsigned int totalNodes = dof_handler.n_dofs(); // Total number of nodes
-
   for (unsigned int i = 0; i <= basisFunctionOrder; ++i) {
     if (i != node) {
       value *= (xi - xi_at_node(i)) / (xi_at_node(node) - xi_at_node(i));
@@ -174,7 +172,8 @@ double FEM<dim>::basis_gradient(unsigned int node, double xi) {
 
   // // EDIT PROBABLY DONE
 
-  // //const unsigned int totalNodes = dof_handler.n_dofs(); // Total number of nodes
+  // //const unsigned int totalNodes = dof_handler.n_dofs(); // Total number of
+  // nodes
 
   // for (unsigned int i = 0; i <= basisFunctionOrder; ++i) {
   //   if (i != node) {
@@ -187,54 +186,55 @@ double FEM<dim>::basis_gradient(unsigned int node, double xi) {
   double xi0 = xi_at_node(node);
   double xi1 = 0.0, xi2 = 0.0, xi3 = 0.0;
 
-  switch((int)basisFunctionOrder) {
+  switch ((int)basisFunctionOrder) {
+  case 1:
+    value = (node == 0) ? -0.5 : 0.5;
+    break;
+  case 2:
+    switch (node) {
+    case 0:
+      xi1 = xi_at_node(1);
+      xi2 = xi_at_node(2);
+      break;
     case 1:
-      value = (node == 0) ? -0.5 : 0.5;
+      xi1 = xi_at_node(0);
+      xi2 = xi_at_node(2);
       break;
     case 2:
-      switch(node) {
-        case 0:
-          xi1 = xi_at_node(1);
-          xi2 = xi_at_node(2);
-          break;
-        case 1:
-          xi1 = xi_at_node(0);
-          xi2 = xi_at_node(2);
-          break;
-        case 2:
-          xi1 = xi_at_node(0);
-          xi2 = xi_at_node(1);
-          break;
-      }
-      value = ((xi - xi2) + (xi - xi1))/((xi0 - xi1) * (xi0 - xi2));
-      break;
-    case 3:
-      switch(node) {
-        case 0:
-          xi1 = xi_at_node(1);
-          xi2 = xi_at_node(2);
-          xi3 = xi_at_node(3);
-          break;
-        case 1:
-          xi1 = xi_at_node(0);
-          xi2 = xi_at_node(2);
-          xi3 = xi_at_node(3);
-          break;
-        case 2:
-          xi1 = xi_at_node(0);
-          xi2 = xi_at_node(1);
-          xi3 = xi_at_node(3);
-          break;
-        case 3:
-          xi1 = xi_at_node(0);
-          xi2 = xi_at_node(1);
-          xi3 = xi_at_node(2);
-          break;
-      }
-      value = ((xi-xi2)*(xi-xi3) + (xi-xi1)*(xi-xi3) + (xi-xi1)*(xi-xi2)) / ((xi0-xi1) * (xi0-xi2) * (xi0-xi3));
+      xi1 = xi_at_node(0);
+      xi2 = xi_at_node(1);
       break;
     }
-
+    value = ((xi - xi2) + (xi - xi1)) / ((xi0 - xi1) * (xi0 - xi2));
+    break;
+  case 3:
+    switch (node) {
+    case 0:
+      xi1 = xi_at_node(1);
+      xi2 = xi_at_node(2);
+      xi3 = xi_at_node(3);
+      break;
+    case 1:
+      xi1 = xi_at_node(0);
+      xi2 = xi_at_node(2);
+      xi3 = xi_at_node(3);
+      break;
+    case 2:
+      xi1 = xi_at_node(0);
+      xi2 = xi_at_node(1);
+      xi3 = xi_at_node(3);
+      break;
+    case 3:
+      xi1 = xi_at_node(0);
+      xi2 = xi_at_node(1);
+      xi3 = xi_at_node(2);
+      break;
+    }
+    value = ((xi - xi2) * (xi - xi3) + (xi - xi1) * (xi - xi3) +
+             (xi - xi1) * (xi - xi2)) /
+            ((xi0 - xi1) * (xi0 - xi2) * (xi0 - xi3));
+    break;
+  }
 
   return value;
 }
@@ -317,31 +317,31 @@ template <int dim> void FEM<dim>::setup_system() {
   // Define quadrature rule
   /*A quad rule of 2 is included here as an example. You will need to decide
     what quadrature rule is needed for the given problems*/
-  
+
   // EDIT CONFIGURE - Number of quadrature points along one dimension
   // quadRule needs to find by empirical method
 
-  quadRule=5;
+  quadRule = 5;
   quad_points.resize(quadRule);
   quad_weight.resize(quadRule);
-  
+
   // quad_points[0] = -sqrt(1./3.); //EDIT
   // quad_points[1] = sqrt(1./3.); //EDIT
 
   // quad_weight[0] = 1.; //EDIT
   // quad_weight[1] = 1.; //EDIT
 
-  quad_weight[0]= 128./225.;
-  quad_weight[1]= (322.+13.*sqrt(70.))/900.;
-  quad_weight[2]= (322.+13.*sqrt(70.))/900.;
-  quad_weight[3]= (322.-13.*sqrt(70.))/900.;
-  quad_weight[4]= (322.-13.*sqrt(70.))/900.;
+  quad_weight[0] = 128. / 225.;
+  quad_weight[1] = (322. + 13. * sqrt(70.)) / 900.;
+  quad_weight[2] = (322. + 13. * sqrt(70.)) / 900.;
+  quad_weight[3] = (322. - 13. * sqrt(70.)) / 900.;
+  quad_weight[4] = (322. - 13. * sqrt(70.)) / 900.;
 
-  quad_points[0]=0.;
-  quad_points[1]= +1./3. * sqrt(5.-2*sqrt(10./7.));
-  quad_points[2]= -1./3. * sqrt(5.-2*sqrt(10./7.));
-  quad_points[3]= +1./3. * sqrt(5.+2*sqrt(10./7.));
-  quad_points[4]= -1./3. * sqrt(5.+2*sqrt(10./7.));
+  quad_points[0] = 0.;
+  quad_points[1] = +1. / 3. * sqrt(5. - 2 * sqrt(10. / 7.));
+  quad_points[2] = -1. / 3. * sqrt(5. - 2 * sqrt(10. / 7.));
+  quad_points[3] = +1. / 3. * sqrt(5. + 2 * sqrt(10. / 7.));
+  quad_points[4] = -1. / 3. * sqrt(5. + 2 * sqrt(10. / 7.));
 
   // Just some notes...
   std::cout << "   Number of active elems:       "
@@ -356,10 +356,8 @@ template <int dim> void FEM<dim>::assemble_system() {
 
   K = 0;
   F = 0;
-
-  const unsigned int dofs_per_elem =
-      fe.dofs_per_cell; // This gives you number of degrees of freedom per
-                        // element
+  // This gives you number of degrees of freedom per element
+  const unsigned int dofs_per_elem = fe.dofs_per_cell;
   FullMatrix<double> Klocal(dofs_per_elem, dofs_per_elem);
   Vector<double> Flocal(dofs_per_elem);
   std::vector<unsigned int> local_dof_indices(dofs_per_elem);
@@ -418,12 +416,12 @@ template <int dim> void FEM<dim>::assemble_system() {
       for (unsigned int B = 0; B < dofs_per_elem; B++) {
         for (unsigned int q = 0; q < quadRule; q++) {
           // EDIT PROBABLY DONE - Define Klocal.
-          Klocal[A][B] += basis_gradient(A, quad_points[q]) * basis_gradient(B, quad_points[q]) * quad_weight[q];
+          Klocal[A][B] += basis_gradient(A, quad_points[q]) *
+                          basis_gradient(B, quad_points[q]) * quad_weight[q];
         }
         Klocal[A][B] *= 2. / h_e;
       }
     }
-
 
     // Assemble local K and F into global K and F
     // You will need to used local_dof_indices[A]
@@ -497,7 +495,8 @@ template <int dim> double FEM<dim>::l2norm_of_error() {
     elem->get_dof_indices(local_dof_indices);
 
     // Find the element length
-    h_e = nodeLocation[local_dof_indices[1]] - nodeLocation[local_dof_indices[0]];
+    h_e =
+        nodeLocation[local_dof_indices[1]] - nodeLocation[local_dof_indices[0]];
 
     for (unsigned int q = 0; q < quadRule; q++) {
       x = 0.0;
@@ -511,12 +510,15 @@ template <int dim> double FEM<dim>::l2norm_of_error() {
       }
       // EDIT - Find the l2-norm of the error through numerical integration.
       /*This includes evaluating the exact solution at the quadrature points*/
-      
-      double du_0 = (prob != 1) ? 0.0 : ((g2 + 1e11 * std::pow(L, 3) / (6 * 1e11) - g1) / L);
-      
+
+      double du_0 = (prob != 1)
+                        ? 0.0
+                        : ((g2 + 1e11 * std::pow(L, 3) / (6 * 1e11) - g1) / L);
+
       u_exact = du_0 * x - 1e11 * std::pow(L, 3) / (6 * 1e11) + g1;
 
-      l2norm += (std::pow(u_h, 2) - 2 * u_exact * u_h + pow(u_exact, 2)) * quad_weight[q] * h_e / 2;
+      l2norm += (std::pow(u_h, 2) - 2 * u_exact * u_h + pow(u_exact, 2)) *
+                quad_weight[q] * h_e / 2;
     }
   }
 
