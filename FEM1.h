@@ -174,6 +174,8 @@ double FEM<dim>::basis_gradient(unsigned int node, double xi) {
 
   // EDIT PROBABLY DONE
 
+  const unsigned int totalNodes = dof_handler.n_dofs(); // Total number of nodes
+
   for (unsigned int i = 0; i < totalNodes; ++i) {
     if (i != node) {
       value += 1 / (xi_at_node(node) - xi_at_node(i));
@@ -332,7 +334,7 @@ template <int dim> void FEM<dim>::assemble_system() {
                basis_function(B, quad_points[q]);
         }
 
-        Flocal[A] += basis_function(A, quad_points(q)) * x * quad_weight[q];
+        Flocal[A] += basis_function(A, quad_points[q]) * x * quad_weight[q];
       }
       Flocal[A] *= 1e11 * h_e / 2;
       // EDIT PROBABLY DONE- Define Flocal.
