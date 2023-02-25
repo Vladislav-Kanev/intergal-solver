@@ -25,9 +25,9 @@
 // Standard C++ libraries
 #include <fstream>
 #include <iostream>
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
 
 using namespace dealii;
 
@@ -264,8 +264,9 @@ template <int dim> void FEM<dim>::setup_system() {
   // Define quadrature rule
   /*A quad rule of 2 is included here as an example. You will need to decide
     what quadrature rule is needed for the given problems*/
-  quadRule =
-      2; // EDIT CONFIGURE - Number of quadrature points along one dimension
+  
+  // EDIT CONFIGURE - Number of quadrature points along one dimension
+  quadRule = 2;
   // quadRule needs to find by empirical method
   quad_points.resize(quadRule);
   quad_weight.resize(quadRule);
@@ -331,7 +332,7 @@ template <int dim> void FEM<dim>::assemble_system() {
                basis_function(B, quad_points[q]);
         }
 
-        Flocal[A] += basis_function(A, quad_points(j)) * x * quad_weight[q];
+        Flocal[A] += basis_function(A, quad_points(q)) * x * quad_weight[q];
       }
       Flocal[A] *= 1e11 * h_e / 2;
       // EDIT PROBABLY DONE- Define Flocal.
@@ -352,12 +353,12 @@ template <int dim> void FEM<dim>::assemble_system() {
       for (unsigned int B = 0; B < dofs_per_elem; B++) {
         for (unsigned int q = 0; q < quadRule; q++) {
           // EDIT PROBABLY DONE - Define Klocal.
-          Klocal.add(A, B,
-                     basis_gradient(A, quad_points[q]) *
-                         basis_gradient(B, quad_points[q]) * quad_weight[q]);
+          Klocal[A][B] += basis_gradient(A, quad_points[q]) * basis_gradient(B, quad_points[q]) * quad_weight[q];
         }
+        Klocal[A][B] *= (2 * 1e11) / h_e;
       }
     }
+
 
     // Assemble local K and F into global K and F
     // You will need to used local_dof_indices[A]
@@ -431,12 +432,11 @@ template <int dim> double FEM<dim>::l2norm_of_error() {
     elem->get_dof_indices(local_dof_indices);
 
     // Find the element length
-    h_e =
-        nodeLocation[local_dof_indices[1]] - nodeLocation[local_dof_indices[0]];
+    h_e = nodeLocation[local_dof_indices[1]] - nodeLocation[local_dof_indices[0]];
 
     for (unsigned int q = 0; q < quadRule; q++) {
-      x = 0.;
-      u_h = 0.;
+      x = 0.0;
+      u_h = 0.0;
       // Find the values of x and u_h (the finite element solution) at the
       // quadrature points
       for (unsigned int B = 0; B < dofs_per_elem; B++) {
@@ -446,7 +446,12 @@ template <int dim> double FEM<dim>::l2norm_of_error() {
       }
       // EDIT - Find the l2-norm of the error through numerical integration.
       /*This includes evaluating the exact solution at the quadrature points*/
-      l2norm += integral(pow(u_h - u_exact, 2) * h_e / 2);
+      
+      double du_0 = (prob != 1) ? 0 : ((g2 + 1e11 * std::pow(L, 3) / (6 * 1e11) - g1) / L);
+      
+      u_exact = du_0 * x - 1e11 * std::pow(L, 3) / (6 * 1e11) + g1;
+
+      l2norm += (std::pow(u_h, 2) - 2 * u_exact * u_h + pow(u_exact, 2)) * quad_weight[q] * h_e / 2;
     }
   }
 
