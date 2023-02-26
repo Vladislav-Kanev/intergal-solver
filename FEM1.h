@@ -170,18 +170,7 @@ double FEM<dim>::basis_gradient(unsigned int node, double xi) {
     (in the bi-unit domain) at any node in the element - using deal.II's element
     node numbering pattern.*/
 
-  // // EDIT PROBABLY DONE
-
-  // //const unsigned int totalNodes = dof_handler.n_dofs(); // Total number of
-  // nodes
-
-  // for (unsigned int i = 0; i <= basisFunctionOrder; ++i) {
-  //   if (i != node) {
-  //     value += 1 / (xi_at_node(node) - xi_at_node(i));
-  //   }
-  // }
-
-  // value *= basis_function(node, xi);
+  // EDIT PROBABLY DONE
 
   double xi0 = xi_at_node(node);
   double xi1 = 0.0, xi2 = 0.0, xi3 = 0.0;
@@ -321,27 +310,13 @@ template <int dim> void FEM<dim>::setup_system() {
   // EDIT CONFIGURE - Number of quadrature points along one dimension
   // quadRule needs to find by empirical method
 
-  quadRule = 5;
+  quadRule = 4;
   quad_points.resize(quadRule);
   quad_weight.resize(quadRule);
 
-  // quad_points[0] = -sqrt(1./3.); //EDIT
-  // quad_points[1] = sqrt(1./3.); //EDIT
+  quad_points = {-0.8611363115940526, -0.33998104358485626, 0.33998104358485626, 0.8611363115940526};
 
-  // quad_weight[0] = 1.; //EDIT
-  // quad_weight[1] = 1.; //EDIT
-
-  quad_weight[0] = 128. / 225.;
-  quad_weight[1] = (322. + 13. * sqrt(70.)) / 900.;
-  quad_weight[2] = (322. + 13. * sqrt(70.)) / 900.;
-  quad_weight[3] = (322. - 13. * sqrt(70.)) / 900.;
-  quad_weight[4] = (322. - 13. * sqrt(70.)) / 900.;
-
-  quad_points[0] = 0.;
-  quad_points[1] = +1. / 3. * sqrt(5. - 2 * sqrt(10. / 7.));
-  quad_points[2] = -1. / 3. * sqrt(5. - 2 * sqrt(10. / 7.));
-  quad_points[3] = +1. / 3. * sqrt(5. + 2 * sqrt(10. / 7.));
-  quad_points[4] = -1. / 3. * sqrt(5. + 2 * sqrt(10. / 7.));
+  quad_weight = {0.3478548451374537, 0.6521451548625462, 0.6521451548625462, 0.3478548451374537};
 
   // Just some notes...
   std::cout << "   Number of active elems:       "
@@ -396,12 +371,11 @@ template <int dim> void FEM<dim>::assemble_system() {
 
         Flocal[A] += basis_function(A, quad_points[q]) * x * quad_weight[q];
       }
-      // Flocal[A] *= 1e11 * h_e / 2;
-      Flocal[A] *= h_e / 2.;
+      Flocal[A] *= 1e11 * h_e / 2;
       // EDIT PROBABLY DONE- Define Flocal.
     }
 
-    // Add nonzero Neumann condi tion, if applicable
+    // Add nonzero Neumann condition, if applicable
     if (prob == 2) {
       if (nodeLocation[local_dof_indices[1]] == L) {
         // EDIT PROBABLY DONE - Modify Flocal to include the traction on the
@@ -419,7 +393,7 @@ template <int dim> void FEM<dim>::assemble_system() {
           Klocal[A][B] += basis_gradient(A, quad_points[q]) *
                           basis_gradient(B, quad_points[q]) * quad_weight[q];
         }
-        Klocal[A][B] *= 2. / h_e;
+        Klocal[A][B] *= 2. / h_e * 1e11;
       }
     }
 
@@ -512,13 +486,12 @@ template <int dim> double FEM<dim>::l2norm_of_error() {
       /*This includes evaluating the exact solution at the quadrature points*/
 
       double du_0 = (prob != 1)
-                        ? 0.0
-                        : ((g2 + 1e11 * std::pow(L, 3) / (6 * 1e11) - g1) / L);
+                        ? (std::pow(L, 2) / 2 + 0.1)
+                        : ((g2 + std::pow(L, 3) / 6 - g1) / L);
 
-      u_exact = du_0 * x - 1e11 * std::pow(L, 3) / (6 * 1e11) + g1;
+      u_exact = du_0 * x - std::pow(x, 3) / 6 + g1;
 
-      l2norm += (std::pow(u_h, 2) - 2 * u_exact * u_h + pow(u_exact, 2)) *
-                quad_weight[q] * h_e / 2;
+      l2norm += std::pow(u_h - u_exact, 2) * quad_weight[q] * h_e / 2;
     }
   }
 
