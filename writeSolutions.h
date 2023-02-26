@@ -45,6 +45,7 @@ void writeSolutionsToFileCA1(const Vector<double> &U, double l2Norm,
 
   // close HDF5 file
   status = H5Fclose(file_id);
+  (void)status; // to suppress warning during compilation
 }
 
 #endif

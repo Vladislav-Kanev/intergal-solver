@@ -76,7 +76,7 @@ public:
       nodeLocation; // Vector of the x-coordinate of nodes by global dof number
   std::map<unsigned int, double>
       boundary_values; // Map of dirichlet boundary conditions
-  double basisFunctionOrder, prob, L, g1, g2, E;
+  double basisFunctionOrder, prob, L, g1, g2, E, f, h;
 
   // solution name array
   std::vector<std::string> nodal_solution_names;
@@ -170,7 +170,7 @@ double FEM<dim>::basis_gradient(unsigned int node, double xi) {
     (in the bi-unit domain) at any node in the element - using deal.II's element
     node numbering pattern.*/
 
-  // EDIT PROBABLY DONE
+  // EDIT MOST LIKELY DONE
 
   double xi0 = xi_at_node(node);
   double xi1 = 0.0, xi2 = 0.0, xi3 = 0.0;
@@ -277,6 +277,8 @@ template <int dim> void FEM<dim>::setup_system() {
   g1 = 0;
   g2 = 0.001; // EDIT DONE
   E = 1e11;
+  f = 1e11;
+  h = 1e10;
 
   // Let deal.II organize degrees of freedom
   dof_handler.distribute_dofs(fe);
@@ -336,7 +338,7 @@ template <int dim> void FEM<dim>::assemble_system() {
   FullMatrix<double> Klocal(dofs_per_elem, dofs_per_elem);
   Vector<double> Flocal(dofs_per_elem);
   std::vector<unsigned int> local_dof_indices(dofs_per_elem);
-  double h_e, x, f;
+  double h_e, x;
 
   // loop over elements
   typename DoFHandler<dim>::active_cell_iterator elem =
@@ -371,16 +373,16 @@ template <int dim> void FEM<dim>::assemble_system() {
 
         Flocal[A] += basis_function(A, quad_points[q]) * x * quad_weight[q];
       }
-      Flocal[A] *= 1e11 * h_e / 2;
-      // EDIT PROBABLY DONE- Define Flocal.
+      Flocal[A] *= f * h_e / 2;
+      // EDIT MOST LIKELY DONE- Define Flocal.
     }
 
     // Add nonzero Neumann condition, if applicable
     if (prob == 2) {
       if (nodeLocation[local_dof_indices[1]] == L) {
-        // EDIT PROBABLY DONE - Modify Flocal to include the traction on the
+        // EDIT MOST LIKELY DONE - Modify Flocal to include the traction on the
         // right boundary.
-        Flocal[1] += 1e10;
+        Flocal[1] += h;
       }
     }
 
@@ -389,24 +391,24 @@ template <int dim> void FEM<dim>::assemble_system() {
     for (unsigned int A = 0; A < dofs_per_elem; A++) {
       for (unsigned int B = 0; B < dofs_per_elem; B++) {
         for (unsigned int q = 0; q < quadRule; q++) {
-          // EDIT PROBABLY DONE - Define Klocal.
+          // EDIT MOST LIKELY DONE - Define Klocal.
           Klocal[A][B] += basis_gradient(A, quad_points[q]) *
                           basis_gradient(B, quad_points[q]) * quad_weight[q];
         }
-        Klocal[A][B] *= 2. / h_e * 1e11;
+        Klocal[A][B] *= 2. / h_e * E;
       }
     }
 
     // Assemble local K and F into global K and F
     // You will need to used local_dof_indices[A]
     for (unsigned int A = 0; A < dofs_per_elem; A++) {
-      // EDIT PROBABLY DONE - add component A of Flocal to the correct location
-      // in F
+      // EDIT MOST LIKELY DONE - add component A of Flocal to the correct
+      // location in F
       /*Remember, local_dof_indices[A] is the global degree-of-freedom number
         corresponding to element node number A*/
       F[local_dof_indices[A]] += Flocal[A];
       for (unsigned int B = 0; B < dofs_per_elem; B++) {
-        // EDIT PROBABLY DONE - add component A,B of Klocal to the correct
+        // EDIT MOST LIKELY DONE - add component A,B of Klocal to the correct
         // location in K (using local_dof_indices)
         /*Note: K is a sparse matrix, so you need to use the function "add".
           For example, to add the variable C to K[i][j], you would use:
@@ -485,9 +487,8 @@ template <int dim> double FEM<dim>::l2norm_of_error() {
       // EDIT - Find the l2-norm of the error through numerical integration.
       /*This includes evaluating the exact solution at the quadrature points*/
 
-      double du_0 = (prob != 1)
-                        ? (std::pow(L, 2) / 2 + 0.1)
-                        : ((g2 + std::pow(L, 3) / 6 - g1) / L);
+      double du_0 = (prob != 1) ? (std::pow(L, 2) / 2 + 0.1)
+                                : ((g2 + std::pow(L, 3) / 6 - g1) / L);
 
       u_exact = du_0 * x - std::pow(x, 3) / 6 + g1;
 
