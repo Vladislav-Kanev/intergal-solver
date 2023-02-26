@@ -310,13 +310,13 @@ template <int dim> void FEM<dim>::setup_system() {
   // EDIT CONFIGURE - Number of quadrature points along one dimension
   // quadRule needs to find by empirical method
 
-  quadRule = 4;
+  quadRule = 3;
   quad_points.resize(quadRule);
   quad_weight.resize(quadRule);
 
-  quad_points = {-0.8611363115940526, -0.33998104358485626, 0.33998104358485626, 0.8611363115940526};
+  quad_points = {-0.7745966692414834, 0.0, 0.7745966692414834};
 
-  quad_weight = {0.3478548451374537, 0.6521451548625462, 0.6521451548625462, 0.3478548451374537};
+  quad_weight = {0.5555555555555557, 0.8888888888888888, 0.5555555555555557};
 
   // Just some notes...
   std::cout << "   Number of active elems:       "
@@ -380,7 +380,7 @@ template <int dim> void FEM<dim>::assemble_system() {
       if (nodeLocation[local_dof_indices[1]] == L) {
         // EDIT PROBABLY DONE - Modify Flocal to include the traction on the
         // right boundary.
-        Flocal[1] += 1e11;
+        Flocal[1] += 1e10;
       }
     }
 
